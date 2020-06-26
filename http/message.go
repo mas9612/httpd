@@ -2,7 +2,20 @@ package http
 
 import (
 	"bufio"
+	"strconv"
 	"strings"
+)
+
+const (
+	bufSize = 4096
+)
+
+var (
+	supportedMethods = []string{
+		"HEAD",
+		"GET",
+		"POST",
+	}
 )
 
 // Headers represents HTTP headers.
@@ -28,6 +41,8 @@ type Request struct {
 	Version string
 
 	Headers Headers
+
+	Body []byte
 }
 
 func parseRequestMessage(reader *bufio.Reader) (*Request, error) {
@@ -40,6 +55,19 @@ func parseRequestMessage(reader *bufio.Reader) (*Request, error) {
 
 	if err := parseHeaders(reader, &req); err != nil {
 		return nil, err
+	}
+
+	if lenStr := req.Headers.Get("Content-Length"); lenStr != "" {
+		length, err := strconv.Atoi(lenStr)
+		if err != nil {
+			return nil, err
+		}
+		if err := readBody(reader, &req, length); err != nil {
+			return nil, err
+		}
+	}
+	if req.Headers.Get("Transfer-Encoding") != "" {
+		// TODO: read body
 	}
 
 	return &req, nil
@@ -99,6 +127,24 @@ func parseHeaders(reader *bufio.Reader, req *Request) error {
 		req.Headers.Add(tmp[0], strings.Trim(tmp[1], " "))
 	}
 
+	return nil
+}
+
+func readBody(reader *bufio.Reader, req *Request, length int) error {
+	buf := make([]byte, bufSize)
+	read := 0
+	for read < length {
+		n, err := reader.Read(buf)
+		if err != nil {
+			return err
+		}
+		read += n
+
+		if read >= length {
+			break
+		}
+	}
+	req.Body = buf[:read]
 	return nil
 }
 

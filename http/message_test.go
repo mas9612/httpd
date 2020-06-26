@@ -12,6 +12,7 @@ func TestParseRequestMessage(t *testing.T) {
 		reader *bufio.Reader
 	}{
 		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1\r\nHost: example.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n"))},
+		{bufio.NewReader(strings.NewReader("POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 13\r\n\r\nHello, world!"))},
 		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1\r\n Host: example.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n"))},
 		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1 toomanyfields\r\nHost: example.com\r\n"))},
 		{bufio.NewReader(strings.NewReader("GET /\r\nHost: example.com\r\n"))},
@@ -30,6 +31,19 @@ func TestParseRequestMessage(t *testing.T) {
 					"Host":            []string{"example.com"},
 					"Accept-Encoding": []string{"gzip, deflate"},
 				},
+			},
+			Err: nil,
+		},
+		{
+			Request: &Request{
+				Method:  "POST",
+				Target:  "/",
+				Version: "HTTP/1.1",
+				Headers: Headers{
+					"Host":           []string{"example.com"},
+					"Content-Length": []string{"13"},
+				},
+				Body: []byte("Hello, world!"),
 			},
 			Err: nil,
 		},
