@@ -154,12 +154,3 @@ type Response struct {
 	StatusCode   int
 	ReasonPhrase string
 }
-
-// RFC7230 3
-// A sender MUST NOT send whitespace between the start-line and the
-//    first header field.  A recipient that receives whitespace between the
-//    start-line and the first header field MUST either reject the message
-//    as invalid or consume each whitespace-preceded line without further
-//    processing of it (i.e., ignore the entire line, along with any
-//    subsequent lines preceded by whitespace, until a properly formed
-//    header field is received or the header section is terminated).
