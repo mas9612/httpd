@@ -5,32 +5,66 @@ import (
 	"strings"
 )
 
+// Headers represents HTTP headers.
+type Headers map[string][]string
+
+// Add adds given key-value pair to Headers.
+func (h Headers) Add(key, value string) {
+	h[key] = append(h[key], value)
+}
+
+// Get returns the first element of given key. If given key doesn't exist in Headers, then empty string will be returned.
+func (h Headers) Get(key string) string {
+	if _, ok := h[key]; !ok {
+		return ""
+	}
+	return h[key][0]
+}
+
+// Request represents the HTTP request.
 type Request struct {
 	Method  string
 	Target  string
 	Version string
+
+	Headers Headers
 }
 
 func parseRequestMessage(reader *bufio.Reader) (*Request, error) {
-	line, err := reader.ReadString('\n')
-	if err != nil {
+	var req Request
+	req.Headers = make(Headers)
+
+	if err := parseRequestLine(reader, &req); err != nil {
 		return nil, err
 	}
-	line = strings.TrimRight(line, " \r\n")
+
+	if err := parseHeaders(reader, &req); err != nil {
+		return nil, err
+	}
+
+	return &req, nil
+}
+
+func parseRequestLine(reader *bufio.Reader, req *Request) error {
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return err
+	}
+	line = strings.TrimRight(line, "\r\n")
 
 	tmp := strings.Split(line, " ")
 	if len(tmp) != 3 {
-		return nil, ErrInvalidRequest
+		return ErrInvalidRequest
 	}
 	if !isValidMethod(tmp[0]) {
-		return nil, ErrMethodNotImplemented
+		return ErrMethodNotImplemented
 	}
 
-	return &Request{
-		Method:  tmp[0],
-		Target:  tmp[1],
-		Version: tmp[2],
-	}, nil
+	req.Method = tmp[0]
+	req.Target = tmp[1]
+	req.Version = tmp[2]
+
+	return nil
 }
 
 func isValidMethod(method string) bool {
@@ -42,6 +76,33 @@ func isValidMethod(method string) bool {
 	return false
 }
 
+func parseHeaders(reader *bufio.Reader, req *Request) error {
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return err
+		}
+		line = strings.TrimRight(line, "\r\n")
+
+		// Empty line means the end of header section.
+		// So we need to exit from this method.
+		if line == "" {
+			break
+		}
+
+		tmp := strings.Split(line, ":")
+
+		if strings.Contains(tmp[0], " ") {
+			return ErrInvalidRequest
+		}
+
+		req.Headers.Add(tmp[0], strings.Trim(tmp[1], " "))
+	}
+
+	return nil
+}
+
+// Response represents the HTTP response.
 type Response struct {
 	Version      string
 	StatusCode   int

@@ -11,18 +11,31 @@ func TestParseRequestMessage(t *testing.T) {
 	inputs := []struct {
 		reader *bufio.Reader
 	}{
-		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1\n"))},
-		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1 toomanyfields\n"))},
-		{bufio.NewReader(strings.NewReader("GET /\n"))},
-		{bufio.NewReader(strings.NewReader("INVALID / HTTP/1.1\n"))},
+		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1\r\nHost: example.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n"))},
+		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1\r\n Host: example.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n"))},
+		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1 toomanyfields\r\nHost: example.com\r\n"))},
+		{bufio.NewReader(strings.NewReader("GET /\r\nHost: example.com\r\n"))},
+		{bufio.NewReader(strings.NewReader("INVALID / HTTP/1.1\r\nHost: example.com\r\n"))},
 	}
 	expects := []struct {
 		Request *Request
 		Err     error
 	}{
 		{
-			Request: &Request{Method: "GET", Target: "/", Version: "HTTP/1.1"},
-			Err:     nil,
+			Request: &Request{
+				Method:  "GET",
+				Target:  "/",
+				Version: "HTTP/1.1",
+				Headers: Headers{
+					"Host":            []string{"example.com"},
+					"Accept-Encoding": []string{"gzip, deflate"},
+				},
+			},
+			Err: nil,
+		},
+		{
+			Request: nil,
+			Err:     ErrInvalidRequest,
 		},
 		{
 			Request: nil,
