@@ -97,3 +97,91 @@ func TestParseRequestMessage(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildResponseFromRequest(t *testing.T) {
+	inputs := []struct {
+		req *Request
+	}{
+		{
+			req: &Request{
+				Method:  "GET",
+				Target:  "/",
+				Version: "HTTP/1.1",
+				Headers: Headers{
+					"Host":            []string{"example.com"},
+					"Accept-Encoding": []string{"gzip, deflate"},
+				},
+				Body: nil,
+			},
+		},
+		{
+			req: &Request{
+				Method:  "POST",
+				Target:  "/",
+				Version: "HTTP/1.1",
+				Headers: Headers{
+					"Host":           []string{"example.com"},
+					"Content-Length": []string{"13"},
+				},
+				Body: []byte("Hello, world!"),
+			},
+		},
+		{
+			req: &Request{
+				Method:  "GET",
+				Target:  "/pub/WWW/TheProject.html",
+				Version: "HTTP/1.1",
+				Headers: Headers{
+					"Host": []string{"www.example.org"},
+				},
+				Body: nil,
+			},
+		},
+	}
+	expects := []struct {
+		res *Response
+		err error
+	}{
+		{
+			res: &Response{
+				Version:      "HTTP/1.1",
+				StatusCode:   200,
+				ReasonPhrase: "OK",
+				Headers: Headers{
+					"Content-Length": []string{"15"},
+				},
+				Body: []byte("Hello from test"),
+			},
+			err: nil,
+		},
+		{
+			res: &Response{
+				Version:      "HTTP/1.1",
+				StatusCode:   200,
+				ReasonPhrase: "OK",
+				Headers: Headers{
+					"Content-Length": []string{"15"},
+				},
+				Body: []byte("Hello from test"),
+			},
+			err: nil,
+		},
+		{
+			res: nil,
+			err: ErrNotFound,
+		},
+	}
+
+	for i, tt := range expects {
+		res, err := buildResponseFromRequest(inputs[i].req, ".")
+		if tt.err == nil {
+			if !reflect.DeepEqual(res, tt.res) {
+				t.Errorf("wants %+v, but got %+v\n", tt.res, res)
+			}
+		} else {
+			if err != tt.err {
+				t.Errorf("wants error %+v, but got %+v\n", tt.err, err)
+			}
+		}
+	}
+}

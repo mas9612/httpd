@@ -2,7 +2,10 @@ package http
 
 import (
 	"bufio"
+	"io/ioutil"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 )
@@ -166,4 +169,37 @@ type Response struct {
 	Version      string
 	StatusCode   int
 	ReasonPhrase string
+	Headers      Headers
+	Body         []byte
+}
+
+func (r *Response) setStatusCode(statusCode int) {
+	r.StatusCode = statusCode
+	r.ReasonPhrase = reasonPhrases[statusCode]
+}
+
+func buildResponseFromRequest(req *Request, documentRoot string) (*Response, error) {
+	res := &Response{Version: req.Version}
+	res.Headers = make(Headers)
+
+	target := req.Target
+	if target == "/" {
+		target = "/index.html"
+	}
+
+	localPath := filepath.Join(documentRoot, target)
+	if _, err := os.Stat(localPath); err != nil {
+		return nil, ErrNotFound
+	}
+
+	b, err := ioutil.ReadFile(localPath)
+	if err != nil {
+		return nil, ErrInternalServerError
+	}
+	res.Body = b
+	res.Headers.Add("Content-Length", strconv.Itoa(len(res.Body)))
+
+	res.setStatusCode(StatusOK)
+
+	return res, nil
 }

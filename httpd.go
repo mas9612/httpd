@@ -9,7 +9,8 @@ import (
 )
 
 type options struct {
-	Port int `short:"p" long:"port" default:"8080" description:"Listen port"`
+	Port         int    `short:"p" long:"port" default:"8080" description:"Listen port."`
+	DocumentRoot string `short:"d" long:"document-root" default:"." description:"Path of document root."`
 }
 
 func main() {
@@ -19,7 +20,8 @@ func main() {
 	}
 
 	server := &http.Server{
-		Port: opts.Port,
+		Port:         opts.Port,
+		DocumentRoot: opts.DocumentRoot,
 	}
 	if err := server.Serve(); err != nil {
 		log.Fatal(err)
