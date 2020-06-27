@@ -2,6 +2,7 @@ package http
 
 import (
 	"bufio"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -67,7 +68,8 @@ func parseRequestMessage(reader *bufio.Reader) (*Request, error) {
 		}
 	}
 	if req.Headers.Get("Transfer-Encoding") != "" {
-		// TODO: read body
+		// TODO: read body.
+		// refer to RFC 7230 Section 4
 	}
 
 	return &req, nil
@@ -88,8 +90,15 @@ func parseRequestLine(reader *bufio.Reader, req *Request) error {
 		return ErrMethodNotImplemented
 	}
 
+	// To accept also absolute-form.
+	// Refer to RFC 7230 Section 5.3.2.
+	url, err := url.Parse(tmp[1])
+	if err != nil {
+		return err
+	}
+
 	req.Method = tmp[0]
-	req.Target = tmp[1]
+	req.Target = url.Path
 	req.Version = tmp[2]
 
 	return nil
@@ -125,6 +134,10 @@ func parseHeaders(reader *bufio.Reader, req *Request) error {
 		}
 
 		req.Headers.Add(tmp[0], strings.Trim(tmp[1], " "))
+	}
+
+	if req.Headers.Get("Host") == "" {
+		return ErrInvalidRequest
 	}
 
 	return nil

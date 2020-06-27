@@ -13,10 +13,12 @@ func TestParseRequestMessage(t *testing.T) {
 	}{
 		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1\r\nHost: example.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n"))},
 		{bufio.NewReader(strings.NewReader("POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 13\r\n\r\nHello, world!"))},
+		{bufio.NewReader(strings.NewReader("GET http://www.example.org/pub/WWW/TheProject.html HTTP/1.1\r\nHost: www.example.org\r\n\r\n"))},
 		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1\r\n Host: example.com\r\nAccept-Encoding: gzip, deflate\r\n\r\n"))},
 		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1 toomanyfields\r\nHost: example.com\r\n"))},
 		{bufio.NewReader(strings.NewReader("GET /\r\nHost: example.com\r\n"))},
 		{bufio.NewReader(strings.NewReader("INVALID / HTTP/1.1\r\nHost: example.com\r\n"))},
+		{bufio.NewReader(strings.NewReader("GET / HTTP/1.1\r\nAccept-Encoding: gzip, deflate\r\n\r\n"))},
 	}
 	expects := []struct {
 		Request *Request
@@ -31,6 +33,7 @@ func TestParseRequestMessage(t *testing.T) {
 					"Host":            []string{"example.com"},
 					"Accept-Encoding": []string{"gzip, deflate"},
 				},
+				Body: nil,
 			},
 			Err: nil,
 		},
@@ -44,6 +47,18 @@ func TestParseRequestMessage(t *testing.T) {
 					"Content-Length": []string{"13"},
 				},
 				Body: []byte("Hello, world!"),
+			},
+			Err: nil,
+		},
+		{
+			Request: &Request{
+				Method:  "GET",
+				Target:  "/pub/WWW/TheProject.html",
+				Version: "HTTP/1.1",
+				Headers: Headers{
+					"Host": []string{"www.example.org"},
+				},
+				Body: nil,
 			},
 			Err: nil,
 		},
@@ -62,6 +77,10 @@ func TestParseRequestMessage(t *testing.T) {
 		{
 			Request: nil,
 			Err:     ErrMethodNotImplemented,
+		},
+		{
+			Request: nil,
+			Err:     ErrInvalidRequest,
 		},
 	}
 
